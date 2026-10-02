@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Strike Arena</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --ink: #101215; --panel: rgba(16,18,21,.78); --line: rgba(233,230,223,.18);
+    --text: #ece8de; --dim: #9a978d; --ct: #5b9bff; --t: #f2a93b; --bad: #ff5a4d; --good: #7ddc8a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; color: var(--text);
+    font-family: Bahnschrift, "DIN Alternate", "Arial Narrow", "Segoe UI", system-ui, sans-serif; user-select: none; }
+  canvas { display: block; }
+  .hidden { display: none !important; }
+  #join { position: fixed; inset: 0; display: grid; place-items: center;
+    background: radial-gradient(circle at 30% 20%, #2b2f36 0, #0d0f12 70%); z-index: 50; }
+  #join .card { width: min(440px, 92vw); padding: 36px; background: var(--panel); border: 1px solid var(--line); }
+  #join h1 { margin: 0 0 4px; font-size: 44px; letter-spacing: .5px; font-weight: 700; }
+  #join p { margin: 0 0 22px; color: var(--dim); line-height: 1.45; }
+  #join input { width: 100%; padding: 12px 14px; font: inherit; font-size: 18px; color: var(--text);
+    background: #0b0c0e; border: 1px solid var(--line); outline: none; }
+  #join input:focus { border-color: var(--t); }
+  #join button { margin-top: 14px; width: 100%; padding: 13px; font: inherit; font-size: 18px; font-weight: 700;
+    color: #161006; background: var(--t); border: 0; cursor: pointer; }
+  #join button:hover { filter: brightness(1.1); }
+  #join .keys { margin-top: 22px; font-size: 14px; color: var(--dim); line-height: 1.7; }
+  #join .keys b { color: var(--text); font-weight: 600; }
+  #err { color: var(--bad); margin-top: 12px; min-height: 1.2em; }
+
+  #top { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch;
+    background: var(--panel); border: 1px solid var(--line); }
+  #top div { padding: 6px 18px; font-size: 26px; font-weight: 700; min-width: 70px; text-align: center; }
+  #ctScore { color: var(--ct); } #tScore { color: var(--t); }
+  #timer { border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 100px !important; font-variant-numeric: tabular-nums; }
+  #phaseMsg { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); font-size: 18px; color: var(--dim); text-shadow: 0 1px 3px #000; text-align: center; }
+  #bigMsg { position: fixed; top: 28%; left: 50%; transform: translateX(-50%); font-size: 46px; font-weight: 700; text-shadow: 0 2px 8px #000; text-align: center; white-space: nowrap; }
+
+  #feed { position: fixed; top: 10px; right: 12px; width: 340px; text-align: right; font-size: 16px; }
+  #feed div { margin-bottom: 4px; padding: 3px 8px; background: var(--panel); display: inline-block; clear: both; float: right; }
+  .ct { color: var(--ct); } .tt { color: var(--t); }
+
+  #bl { position: fixed; left: 18px; bottom: 16px; display: flex; gap: 14px; align-items: flex-end; text-shadow: 0 2px 4px #000; }
+  #bl .stat { background: var(--panel); border: 1px solid var(--line); padding: 6px 14px; font-size: 38px; font-weight: 700; line-height: 1; }
+  #bl .stat small { display: block; font-size: 12px; font-weight: 400; color: var(--dim); letter-spacing: .3px; margin-bottom: 4px; }
+  #money { color: var(--good); }
+  #br { position: fixed; right: 18px; bottom: 16px; text-align: right; text-shadow: 0 2px 4px #000; }
+  #ammo { font-size: 52px; font-weight: 700; line-height: 1; } #ammo span { font-size: 24px; color: var(--dim); }
+  #wname { font-size: 18px; color: var(--dim); margin-top: 2px; }
+  #slots { position: fixed; right: 18px; top: 50%; transform: translateY(-50%); font-size: 16px; text-align: right; }
+  #slots div { padding: 4px 10px; margin-bottom: 3px; background: var(--panel); border-right: 3px solid transparent; color: var(--dim); }
+  #slots div.cur { color: var(--text); border-right-color: var(--t); }
+
+  #cross { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%,-50%); pointer-events: none; }
+  #cross i { position: absolute; background: #7dffa0; box-shadow: 0 0 2px #000; }
+  #cross i:nth-child(1) { left: 10px; top: 0; width: 2px; height: 7px; } #cross i:nth-child(2) { left: 10px; bottom: 0; width: 2px; height: 7px; }
+  #cross i:nth-child(3) { top: 10px; left: 0; height: 2px; width: 7px; } #cross i:nth-child(4) { top: 10px; right: 0; height: 2px; width: 7px; }
+  #hitm { position: fixed; left: 50%; top: 50%; width: 34px; height: 34px; transform: translate(-50%,-50%) rotate(45deg); pointer-events: none; opacity: 0; }
+  #hitm::before, #hitm::after { content: ""; position: absolute; background: #fff; }
+  #hitm::before { left: 16px; top: 0; width: 2px; height: 34px; } #hitm::after { top: 16px; left: 0; height: 2px; width: 34px; }
+  #hitm.kill::before, #hitm.kill::after { background: var(--bad); }
+  #flash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(transparent 40%, rgba(220,30,20,.75)); opacity: 0; }
+  #scope { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 0, transparent 34vh, #000 34.3vh); }
+  #scope::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #000; }
+  #scope::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #000; }
+  #lockmsg { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.45); font-size: 28px; cursor: pointer; }
+  #dead { position: fixed; bottom: 22%; left: 50%; transform: translateX(-50%); font-size: 26px; color: var(--bad); text-shadow: 0 2px 6px #000; }
+
+  #board { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(720px, 94vw);
+    background: var(--panel); border: 1px solid var(--line); padding: 14px 18px; }
+  #board h3 { margin: 4px 0 6px; font-size: 20px; } #board h3.ct { color: var(--ct); } #board h3.tt { color: var(--t); }
+  #board table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  #board td, #board th { padding: 4px 8px; text-align: right; } #board td:first-child, #board th:first-child { text-align: left; width: 60%; }
+  #board th { color: var(--dim); font-weight: 400; font-size: 13px; border-bottom: 1px solid var(--line); }
+  #board tr.dead td { color: var(--dim); } #board tr.me td:first-child { font-weight: 700; }
+
+  #buy { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(520px, 94vw);
+    background: rgba(16,18,21,.94); border: 1px solid var(--line); padding: 18px 22px; }
+  #buy header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  #buy h2 { margin: 0; font-size: 26px; } #buyMoney { font-size: 26px; color: var(--good); font-weight: 700; }
+  #buy .note { color: var(--dim); font-size: 14px; margin-bottom: 8px; min-height: 1.3em; }
+  .item { display: flex; width: 100%; justify-content: space-between; padding: 10px 12px; margin-bottom: 4px;
+    font: inherit; font-size: 18px; color: var(--text); background: #1a1d21; border: 1px solid var(--line); cursor: pointer; text-align: left; }
+  .item:hover { border-color: var(--t); } .item.off { opacity: .4; cursor: not-allowed; } .item.owned { border-color: var(--good); }
+  .item span:first-child b { display: inline-block; width: 24px; color: var(--t); }
+  .item small { color: var(--dim); margin-left: 8px; }
+
+  #join .card { max-height: 96vh; overflow: auto; }
+  #mapPick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 6px; }
+  #join .mapcard { margin: 0; padding: 10px 8px; width: auto; text-align: left; font-size: 15px; font-weight: 400; color: var(--text);
+    background: #15181c; border: 1px solid var(--line); cursor: pointer; }
+  #join .mapcard b { display: block; font-size: 18px; margin-bottom: 3px; }
+  #join .mapcard small { display: block; color: var(--dim); font-size: 12px; line-height: 1.25; }
+  #join .mapcard.sel { border-color: var(--t); background: #221c10; }
+  #join .mapcard.lock { opacity: .45; cursor: default; }
+  #mapNote { font-size: 13px; color: var(--dim); margin: 0 0 12px; min-height: 1.3em; }
+  #join .lbl { display: block; font-size: 13px; color: var(--dim); margin: 0 0 6px; }
+  #join .volrow { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; color: var(--dim); font-size: 14px; }
+  #join .volrow input { padding: 0; border: 0; background: none; accent-color: var(--t); }
+  #mapName { position: fixed; top: 12px; left: 14px; font-size: 18px; color: var(--dim); text-shadow: 0 1px 3px #000; letter-spacing: .5px; }
+  #speed { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); font-size: 22px; font-weight: 700; color: var(--text);
+    text-shadow: 0 2px 4px #000; font-variant-numeric: tabular-nums; }
+  #speed::after { content: " u/s"; font-size: 12px; font-weight: 400; color: var(--dim); }
+  #mapMenu, #vote { position: fixed; left: 50%; background: rgba(16,18,21,.94); border: 1px solid var(--line); padding: 18px 22px; width: min(420px, 94vw); }
+  #mapMenu { top: 50%; transform: translate(-50%,-50%); }
+  #vote { top: 18%; transform: translateX(-50%); }
+  #mapMenu h2, #vote h2 { margin: 0 0 6px; font-size: 24px; }
+  #mapMenu .note, #vote .note { color: var(--dim); font-size: 14px; margin-bottom: 10px; }
+
+  #radar { position: fixed; left: 14px; top: 42px; width: 190px; height: 190px; border-radius: 50%; background: rgba(16,18,21,.55); pointer-events: none; }
+  #bombMsg { position: fixed; left: 50%; bottom: 25%; transform: translateX(-50%); font-size: 22px; font-weight: 700; color: var(--text);
+    text-shadow: 0 2px 6px #000; text-align: center; white-space: nowrap; }
+  #prog { position: fixed; left: 50%; bottom: 31%; transform: translateX(-50%); width: min(300px, 70vw); text-align: center; text-shadow: 0 2px 4px #000; }
+  #prog #progLabel { font-size: 18px; margin-bottom: 6px; }
+  #prog .bar { height: 10px; background: rgba(0,0,0,.55); border: 1px solid var(--line); }
+  #prog .bar i { display: block; height: 100%; width: 0; background: var(--t); }
+  #white { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  #join .volrow .num { width: 74px; padding: 4px 6px; font-size: 14px; text-align: center; border: 1px solid var(--line); background: #0b0c0e; color: var(--text); }
+  #lockmsg .pbox { background: rgba(16,18,21,.94); border: 1px solid var(--line); padding: 22px 28px; text-align: center; max-width: 94vw; }
+  #lockmsg .ptitle { font-size: 24px; margin-bottom: 16px; }
+  #lockmsg .setrow { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; color: var(--dim); margin: 10px 0; cursor: default; }
+  #lockmsg .setrow input[type=range] { width: 170px; accent-color: var(--t); }
+  #lockmsg .num { width: 74px; padding: 4px 6px; font: inherit; font-size: 15px; text-align: center; color: var(--text); background: #0b0c0e; border: 1px solid var(--line); }
+  #lockmsg .phint { margin-top: 12px; font-size: 12px; color: var(--dim); }
+  #diag { position: fixed; left: 16px; top: 238px; font-size: 13px; color: var(--dim); text-shadow: 0 1px 3px #000; font-variant-numeric: tabular-nums; }
+  #join select { padding: 4px 6px; font: inherit; font-size: 14px; color: var(--text); background: #0b0c0e; border: 1px solid var(--line); }
+  #lockmsg select { padding: 4px 6px; font: inherit; font-size: 15px; color: var(--text); background: #0b0c0e; border: 1px solid var(--line); }
+  #rights { position: fixed; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--dim); letter-spacing: .3px; pointer-events: none; z-index: 5; }
+  .legal { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; line-height: 1.45; color: var(--dim); }
+  .guide { text-align: left; font-size: 13.5px; line-height: 1.5; color: var(--text); margin-top: 14px; }
+  .guide h3 { margin: 14px 0 6px; font-size: 14px; letter-spacing: .6px; text-transform: uppercase; color: var(--t); }
+  .guide ul { margin: 0; padding-left: 18px; } .guide li { margin: 2px 0; }
+  .guide kbd { display: inline-block; min-width: 18px; padding: 0 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: #0b0c0e; font: 600 12px/18px inherit; text-align: center; }
+  #lockmsg { overflow: auto; }
+  #lockmsg .pbox { width: min(640px, 94vw); max-height: 92vh; overflow: auto; text-align: center; }
+  #lockmsg .pnote { color: var(--dim); font-size: 13px; margin: -8px 0 12px; }
+  #lockmsg #resume { width: 100%; margin: 0 0 14px; }
+  #mapMenu .note, #vote .note { display: none; }
+</style>
+</head>
+<body>
+
+<div id="join">
+  <div id="rights">© 2026 Mamuta Raxalyev. All rights reserved. Idea taken from Counter-Strike 2.</div>
+  <div class="card">
+    <h1>Strike Arena</h1>
+    <p>Командный шутер по сети: CT против T, раунды, закупка оружия и экономика. До 5 на 5. Матч идёт до 8 побед. Если вы один, включается разминка с мишенями.</p>
+    <input id="name" maxlength="16" placeholder="Ваш ник" autocomplete="off">
+    <span class="lbl" style="margin-top:16px">Карта</span>
+    <div id="mapPick"></div>
+    <div id="mapNote"></div>
+    <button id="go">Играть</button>
+    <div class="volrow">Сторона <select id="team"><option value="">Авто</option><option value="CT">CT (защита)</option><option value="T">T (с бомбой)</option></select>
+      Графика <select id="gfx"><option value="auto">Авто</option><option value="0">Низкая</option><option value="1">Средняя</option><option value="2">Высокая</option></select></div>
+    <div class="volrow">Громкость <input id="vol" type="range" min="0" max="100" value="70"></div>
+    <div class="volrow">Чувствительность <input id="sens" type="range" min="0.1" max="10" step="0.05" value="5.5"> <input id="sensNum" class="num" type="number" min="0.1" max="10" step="0.05" value="5.5"></div>
+    <div id="err"></div>
+    <div class="guide" id="guideJoin"></div>
+    <div class="legal">© 2026 Mamuta Raxalyev. All rights reserved.<br>Idea taken from Counter-Strike 2. This is an independent project, not affiliated with or endorsed by Valve Corporation.</div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="mapName"></div>
+  <div id="diag"></div>
+  <canvas id="radar" width="190" height="190"></canvas>
+  <div id="speed">0</div>
+  <div id="top"><div id="ctScore">0</div><div id="timer">0:00</div><div id="tScore">0</div></div>
+  <div id="bigMsg"></div>
+  <div id="feed"></div>
+  <div id="prog" class="hidden"><div id="progLabel"></div><div class="bar"><i id="progFill"></i></div></div>
+  <div id="white"></div>
+  <div id="cross"><i></i><i></i><i></i><i></i></div>
+  <div id="hitm"></div>
+  <div id="flash"></div>
+  <div id="scope" class="hidden"></div>
+  <div id="bl">
+    <div class="stat"><small>Здоровье</small><span id="hp">100</span></div>
+    <div class="stat"><small>Броня</small><span id="armor">0</span></div>
+    <div class="stat"><small>Деньги</small><span id="money">$800</span></div>
+  </div>
+  <div id="br"><div id="ammo"></div><div id="wname"></div></div>
+  <div id="slots"></div>
+  <div id="dead" class="hidden">Вы погибли. Ждите следующего раунда</div>
+  <div id="board" class="hidden"></div>
+  <div id="buy" class="hidden">
+    <header><h2>Закупка</h2><div id="buyMoney">$0</div></header>
+    <div class="note" id="buyNote"></div>
+    <div id="buyList"></div>
+  </div>
+  <div id="mapMenu" class="hidden">
+    <h2>Выбор карты</h2>
+    <div id="mapList"></div>
+  </div>
+  <div id="vote" class="hidden">
+    <h2>Следующая карта</h2>
+        <div id="voteList"></div>
+  </div>
+  <div id="lockmsg" class="hidden">
+    <div class="pbox">
+      <div class="ptitle">Меню</div>
+      <div class="pnote">Игра продолжается, пока вы в меню</div>
+      <button id="resume">Вернуться в игру</button>
+      <div class="setrow">Чувствительность <input id="sens2" type="range" min="0.1" max="10" step="0.05" value="5.5"> <input id="sensNum2" class="num" type="number" min="0.1" max="10" step="0.05" value="5.5"></div>
+      <div class="setrow">Графика <select id="gfx2"><option value="auto">Авто</option><option value="0">Низкая</option><option value="1">Средняя</option><option value="2">Высокая</option></select></div>
+      <div class="setrow">Громкость <input id="vol2" type="range" min="0" max="100" value="70"></div>
+      <div class="guide" id="guideMenu"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/models.js"></script>
+<script src="js/fx.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
