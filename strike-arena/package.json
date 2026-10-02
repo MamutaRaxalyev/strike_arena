@@ -1,9 +1,0 @@
-{
-  "name": "strike-arena",
-  "version": "1.0.0",
-  "description": "Сетевой командный шутер в браузере: раунды, закупка оружия, экономика",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=16" },
-  "license": "MIT"
-}
